@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDG & Poverty Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6f8; --card:#ffffff; --text:#17212b; --muted:#5d6b78; --line:#dde3e9; --accent:#0b6e8a; --accent2:#e8f4f7;
+  --g:#2e9d5b; --y:#e6b800; --o:#f08a24; --r:#d64545; --n:#c9d1d8; --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11171d; --card:#1a222b; --text:#e6edf3; --muted:#9aa8b5; --line:#2c3743; --accent:#3fb3d3; --accent2:#173340;
+    --n:#3a4652; --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:15px;line-height:1.55}
+header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.hwrap{max-width:1280px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.brand{font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px}
+.brand .dot{width:28px;height:28px;border-radius:50%;background:conic-gradient(#E5243B,#DDA63A,#4C9F38,#C5192D,#FF3A21,#26BDE2,#FCC30B,#A21942,#FD6925,#DD1367,#FD9D24,#BF8B2E,#3F7E44,#0A97D9,#56C02B,#00689D,#19486A,#E5243B)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--text);padding:8px 14px;font:inherit;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff;font-weight:600}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:10px;font:inherit;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+main{max-width:1280px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:var(--shadow)}
+h2{margin:0 0 4px;font-size:20px}
+h3{margin:0;font-size:16px}
+.muted{color:var(--muted);font-size:13.5px;margin:0}
+.status{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:12px}
+.status b{color:var(--text)}
+.progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden;flex:1;min-width:120px;display:none}
+.progress>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.spread{justify-content:space-between}
+input[type=text],input[type=number],select{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+input[type=number]{width:70px;padding:5px 8px}
+select{padding:5px 8px}
+.tablebox{overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px}
+.tablebox.tall{max-height:620px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--card);z-index:2;font-weight:600;border-bottom:2px solid var(--line)}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--accent2)}
+tbody tr.picked{background:var(--accent2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.cell{display:inline-block;min-width:34px;text-align:center;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:600;color:#fff}
+.cell.g{background:var(--g)}.cell.y{background:var(--y);color:#222}.cell.o{background:var(--o)}.cell.r{background:var(--r)}.cell.n{background:var(--n);color:var(--muted);font-weight:400}
+.mini{display:inline-block;width:16px;height:16px;border-radius:4px;margin-right:2px;vertical-align:middle}
+.mini.g{background:var(--g)}.mini.y{background:var(--y)}.mini.o{background:var(--o)}.mini.r{background:var(--r)}.mini.n{background:var(--n)}
+tr.dimrow td{background:var(--accent2);font-weight:600}
+tr.idxrow td{font-weight:700;font-size:14px}
+td.indname{white-space:normal;min-width:260px;max-width:420px;padding-left:24px}
+td.dimname{white-space:normal;min-width:260px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.picker{position:relative;max-width:560px}
+.picker input{width:100%}
+.dd{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--line);border-radius:10px;max-height:320px;overflow:auto;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
+.dd div{padding:7px 12px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.dd div.act,.dd div:hover{background:var(--accent2)}
+.dd small{color:var(--muted)}
+.badge{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 5px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 10px;background:var(--accent2)}
+.chip button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 4px}
+.desc{background:var(--accent2);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:14px}
+.desc ul{margin:6px 0 0;padding-left:20px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(520px,1fr));gap:18px}
+@media (max-width:620px){.charts{grid-template-columns:1fr}.card{padding:14px}}
+.chart-card{margin:0}
+.cc-ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0;font-size:13px}
+.cc-body{position:relative}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--card);padding:10px 18px;border-radius:10px;font-size:14px;z-index:50;display:none}
+footer{max-width:1280px;margin:0 auto;padding:0 16px 30px;font-size:13px;color:var(--muted)}
+a{color:var(--accent)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div class="brand"><span class="dot"></span><span data-i="appTitle"></span></div>
+    <div class="tools">
+      <div class="seg" id="modeSeg">
+        <button data-mode="sdg" class="on">SDG Index</button>
+        <button data-mode="pov">Poverty Index</button>
+      </div>
+      <div class="seg" id="langSeg">
+        <button data-lang="th" class="on">ไทย</button>
+        <button data-lang="en">EN</button>
+      </div>
+      <button class="btn" id="btnUpdate">⟳ <span data-i="update"></span></button>
+      <button class="btn" id="btnReset">↺ <span data-i="reset"></span></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="status">
+    <span><span data-i="source"></span>: <b>World Bank Open Data API</b></span>
+    <span><span data-i="dbUpdated"></span>: <b id="stLu">–</b></span>
+    <span><span data-i="fetched"></span>: <b id="stFetched">–</b></span>
+    <span id="stMsg"></span>
+    <div class="progress" id="prog"><i></i></div>
+  </div>
+
+  <!-- 1. Ranking -->
+  <section class="card">
+    <div class="row spread">
+      <div>
+        <h2 id="rankTitle"></h2>
+        <p class="muted" id="rankSub"></p>
+      </div>
+      <div class="row">
+        <input type="text" id="rankFilter" data-ph="filterPh" style="width:200px">
+        <button class="btn small" id="btnSort"></button>
+        <button class="btn small" id="btnRankXlsx">⤓ Excel</button>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="tablebox tall"><table id="rankTable"></table></div>
+  </section>
+
+  <!-- 2. Country picker -->
+  <section class="card">
+    <h2 data-i="pickTitle"></h2>
+    <p class="muted" data-i="pickSub"></p>
+    <div class="row" style="margin-top:12px;align-items:flex-start">
+      <div class="picker" style="flex:1;min-width:260px">
+        <input type="text" id="cInput" autocomplete="off" data-ph="pickPh">
+        <div class="dd" id="cDD"></div>
+      </div>
+      <button class="btn small" id="btnTop5" data-i="addTop5"></button>
+      <button class="btn small" id="btnClear" data-i="clearSel"></button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <!-- 3. Comparison table -->
+  <section class="card" id="cmpCard">
+    <div class="row spread">
+      <div>
+        <h2 id="cmpTitle"></h2>
+        <p class="muted" id="cmpSub"></p>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnXlsx">⤓ <span data-i="saveExcel"></span></button>
+        <button class="btn primary" id="btnCharts">📊 <span data-i="showCharts"></span></button>
+      </div>
+    </div>
+    <div id="cmpBody"></div>
+  </section>
+
+  <!-- 4. Charts -->
+  <section class="card hidden" id="chartSec">
+    <div class="row spread">
+      <div>
+        <h2 data-i="chartsTitle"></h2>
+        <p class="muted" data-i="chartsSub"></p>
+      </div>
+      <button class="btn small" id="btnHideCharts" data-i="hideCharts"></button>
+    </div>
+    <div class="charts" id="charts" style="margin-top:14px"></div>
+  </section>
+</main>
+
+<footer id="footer"></footer>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   CONFIG — แก้ไข/เพิ่มตัวชี้วัดได้ที่นี่ (ใช้รหัสตัวชี้วัดของ World Bank)
+   lo = ค่าที่ได้ 0 คะแนน, hi = ค่าที่ถือว่าบรรลุเป้าหมาย (100 คะแนน)
+   ===================================================================== */
+const CFG = {
+  WB: 'https://api.worldbank.org/v2',
+  COUNTRIES_URL: 'https://restcountries.com/v3.1/all?fields=name,cca2,cca3',
+  CACHE_KEY: 'sdgpov_latest_v1',
+  CACHE_TTL: 6 * 3600e3,        // ข้อมูลเก่ากว่า 6 ชม. จะดึงใหม่อัตโนมัติ
+  AUTO_REFRESH: 6 * 3600e3,     // ขณะเปิดหน้าไว้ ตรวจอัปเดตทุก 6 ชม.
+  HIST_FROM: 1990, CHART_FROM: 2000, LOCF: 10,
+  CONCURRENCY: 6, MAX_SELECT: 15
+};
+const UNITS = {
+  pct:{en:'%',th:'%'}, p100k:{en:'per 100,000',th:'ต่อประชากร 100,000 คน'}, p1k:{en:'per 1,000',th:'ต่อ 1,000 คน'},
+  yrs:{en:'years',th:'ปี'}, kgha:{en:'kg/ha',th:'กก./เฮกตาร์'}, wgi:{en:'−2.5 to 2.5',th:'−2.5 ถึง 2.5'},
+  pm:{en:'µg/m³',th:'µg/m³'}, tpc:{en:'t CO₂e/capita',th:'ตัน CO₂e/คน'}, p100:{en:'per 100 people',th:'ต่อประชากร 100 คน'},
+  gdp:{en:'% of GDP',th:'% ของ GDP'}, gni:{en:'% of GNI',th:'% ของ GNI'}, mj:{en:'MJ/$ GDP (PPP)',th:'MJ ต่อ GDP $1 (PPP)'},
+  s100:{en:'score 0–100',th:'คะแนน 0–100'}, lpi:{en:'score 1–5',th:'คะแนน 1–5'}, gini:{en:'index 0–100',th:'ดัชนี 0–100'},
+  gr:{en:'annual %',th:'% ต่อปี'}, mmr:{en:'per 100,000 live births',th:'ต่อการเกิดมีชีพ 100,000 คน'},
+  adol:{en:'births per 1,000 women 15–19',th:'การเกิดต่อหญิงอายุ 15–19 ปี 1,000 คน'}
+};
+// I(code, ชื่ออังกฤษ, ชื่อไทย, lo = ค่าที่ได้ 0 คะแนน, hi = ค่าที่ได้ 100 คะแนน (บรรลุเป้าหมาย), หน่วย, source id)
+function I(code,en,th,lo,hi,unit,src){return {code,en,th,lo,hi,unit,src};}
+
+const SDG_DIMS = [
+ {n:1,c:'#E5243B',en:'No Poverty',th:'ขจัดความยากจน',ind:[
+  I('SI.POV.DDAY','Poverty headcount ratio at $3.00/day (2021 PPP)','สัดส่วนคนจนที่เส้น $3.00/วัน (PPP 2021)',70,0,'pct'),
+  I('SI.POV.LMIC','Poverty headcount ratio at $4.20/day (2021 PPP)','สัดส่วนคนจนที่เส้น $4.20/วัน (PPP 2021)',85,0,'pct')]},
+ {n:2,c:'#DDA63A',en:'Zero Hunger',th:'ขจัดความหิวโหย',ind:[
+  I('SN.ITK.DEFC.ZS','Prevalence of undernourishment','ความชุกของภาวะขาดสารอาหาร',42,2.5,'pct'),
+  I('SH.STA.STNT.ZS','Stunting, children under 5','ภาวะเตี้ยแคระแกร็นในเด็กอายุต่ำกว่า 5 ปี',50,2.5,'pct'),
+  I('SH.STA.WAST.ZS','Wasting, children under 5','ภาวะผอมในเด็กอายุต่ำกว่า 5 ปี',16,0.75,'pct'),
+  I('AG.YLD.CREL.KG','Cereal yield','ผลผลิตธัญพืชต่อพื้นที่',200,7000,'kgha')]},
+ {n:3,c:'#4C9F38',en:'Good Health and Well-being',th:'สุขภาพและความเป็นอยู่ที่ดี',ind:[
+  I('SH.STA.MMRT','Maternal mortality ratio','อัตราการตายของมารดา',814,3.4,'mmr'),
+  I('SH.DYN.NMRT','Neonatal mortality rate','อัตราการตายของทารกแรกเกิด',39,1.1,'p1k'),
+  I('SH.DYN.MORT','Under-5 mortality rate','อัตราการตายของเด็กอายุต่ำกว่า 5 ปี',130,2.6,'p1k'),
+  I('SH.TBS.INCD','Incidence of tuberculosis','อุบัติการณ์วัณโรค',561,0,'p100k'),
+  I('SP.DYN.LE00.IN','Life expectancy at birth','อายุคาดเฉลี่ยเมื่อแรกเกิด',54,83,'yrs'),
+  I('SH.STA.TRAF.P5','Road traffic mortality','อัตราการตายจากอุบัติเหตุทางถนน',33.7,3.2,'p100k'),
+  I('SH.STA.BRTC.ZS','Births attended by skilled health staff','การคลอดโดยบุคลากรสาธารณสุขที่มีทักษะ',23,100,'pct'),
+  I('SH.IMM.MEAS','Measles immunization, children 12–23 months','ความครอบคลุมวัคซีนหัด (เด็ก 12–23 เดือน)',40,100,'pct'),
+  I('SH.UHC.SRVS.CV.XD','UHC service coverage index','ดัชนีความครอบคลุมหลักประกันสุขภาพถ้วนหน้า',40,100,'s100')]},
+ {n:4,c:'#C5192D',en:'Quality Education',th:'การศึกษาที่มีคุณภาพ',ind:[
+  I('SE.PRE.ENRR','Pre-primary enrollment (gross)','อัตราเข้าเรียนก่อนประถมศึกษา (รวม)',0,100,'pct'),
+  I('SE.PRM.CMPT.ZS','Primary completion rate','อัตราการสำเร็จการศึกษาระดับประถม',40,100,'pct'),
+  I('SE.SEC.CMPT.LO.ZS','Lower secondary completion rate','อัตราการสำเร็จมัธยมศึกษาตอนต้น',20,100,'pct'),
+  I('SE.ADT.LITR.ZS','Adult literacy rate','อัตราการรู้หนังสือของผู้ใหญ่',30,100,'pct'),
+  I('SE.TER.ENRR','Tertiary enrollment (gross)','อัตราเข้าเรียนระดับอุดมศึกษา (รวม)',0,60,'pct')]},
+ {n:5,c:'#FF3A21',en:'Gender Equality',th:'ความเท่าเทียมทางเพศ',ind:[
+  I('SG.GEN.PARL.ZS','Seats held by women in national parliament','สัดส่วนที่นั่งของผู้หญิงในรัฐสภา',0,50,'pct'),
+  I('SL.TLF.CACT.FM.ZS','Ratio of female to male labor force participation','อัตราส่วนการมีส่วนร่วมในกำลังแรงงานหญิงต่อชาย',20,100,'pct'),
+  I('SP.ADO.TFRT','Adolescent fertility rate','อัตราการเกิดในวัยรุ่น',140,2.5,'adol'),
+  I('SP.M18.2024.FE.ZS','Women first married by age 18','ผู้หญิงที่แต่งงานก่อนอายุ 18 ปี',60,0,'pct')]},
+ {n:6,c:'#26BDE2',en:'Clean Water and Sanitation',th:'น้ำสะอาดและสุขาภิบาล',ind:[
+  I('SH.H2O.BASW.ZS','Basic drinking water services','การเข้าถึงน้ำดื่มขั้นพื้นฐาน',40,100,'pct'),
+  I('SH.H2O.SMDW.ZS','Safely managed drinking water','น้ำดื่มที่มีการจัดการอย่างปลอดภัย',0,100,'pct'),
+  I('SH.STA.BASS.ZS','Basic sanitation services','การเข้าถึงสุขาภิบาลขั้นพื้นฐาน',10,100,'pct'),
+  I('ER.H2O.FWST.ZS','Freshwater withdrawal (% of available resources)','การใช้น้ำจืด (% ของทรัพยากรน้ำที่มี)',100,12.5,'pct')]},
+ {n:7,c:'#FCC30B',en:'Affordable and Clean Energy',th:'พลังงานสะอาดที่ทุกคนเข้าถึงได้',ind:[
+  I('EG.ELC.ACCS.ZS','Access to electricity','การเข้าถึงไฟฟ้า',10,100,'pct'),
+  I('EG.CFT.ACCS.ZS','Access to clean cooking fuels','การเข้าถึงเชื้อเพลิงหุงต้มสะอาด',2,100,'pct'),
+  I('EG.FEC.RNEW.ZS','Renewable energy share of final consumption','สัดส่วนพลังงานหมุนเวียนในการใช้พลังงานขั้นสุดท้าย',0,60,'pct'),
+  I('EG.EGY.PRIM.PP.KD','Energy intensity of primary energy','ความเข้มข้นการใช้พลังงานปฐมภูมิ',12,2,'mj')]},
+ {n:8,c:'#A21942',en:'Decent Work and Economic Growth',th:'งานที่มีคุณค่าและการเติบโตทางเศรษฐกิจ',ind:[
+  I('NY.GDP.PCAP.KD.ZG','GDP per capita growth','การเติบโตของ GDP ต่อหัว',-3,5,'gr'),
+  I('SL.UEM.TOTL.ZS','Unemployment rate','อัตราการว่างงาน',25,0.5,'pct'),
+  I('SL.UEM.NEET.ZS','Youth not in education, employment or training','เยาวชนที่ไม่ได้เรียน ไม่ได้ทำงาน ไม่ได้ฝึกอบรม (NEET)',40,3,'pct'),
+  I('FX.OWN.TOTL.ZS','Account ownership at a financial institution (age 15+)','การมีบัญชีกับสถาบันการเงิน (อายุ 15+)',0,100,'pct')]},
+ {n:9,c:'#FD6925',en:'Industry, Innovation and Infrastructure',th:'อุตสาหกรรม นวัตกรรม และโครงสร้างพื้นฐาน',ind:[
+  I('IT.NET.USER.ZS','Individuals using the Internet','ผู้ใช้อินเทอร์เน็ต',0,100,'pct'),
+  I('IT.NET.BBND.P2','Fixed broadband subscriptions','ผู้ใช้บรอดแบนด์ประจำที่',0,40,'p100'),
+  I('IT.CEL.SETS.P2','Mobile cellular subscriptions','ผู้ใช้โทรศัพท์มือถือ',0,100,'p100'),
+  I('GB.XPD.RSDV.GD.ZS','Research and development expenditure','ค่าใช้จ่ายด้านการวิจัยและพัฒนา',0,3.7,'gdp'),
+  I('LP.LPI.OVRL.XQ','Logistics performance index','ดัชนีประสิทธิภาพโลจิสติกส์',1.9,4.2,'lpi')]},
+ {n:10,c:'#DD1367',en:'Reduced Inequalities',th:'ลดความเหลื่อมล้ำ',ind:[
+  I('SI.POV.GINI','Gini index','ดัชนีจีนี (Gini)',63,27.5,'gini'),
+  I('SI.DST.FRST.20','Income share held by lowest 20%','ส่วนแบ่งรายได้ของกลุ่มล่างสุด 20%',3,10,'pct')]},
+ {n:11,c:'#FD9D24',en:'Sustainable Cities and Communities',th:'เมืองและชุมชนที่ยั่งยืน',ind:[
+  I('EN.ATM.PM25.MC.M3','PM2.5 air pollution, mean annual exposure','ค่าเฉลี่ยรายปีของฝุ่น PM2.5',87,6.3,'pm'),
+  I('EN.POP.SLUM.UR.ZS','Urban population living in slums','ประชากรเมืองที่อาศัยในชุมชนแออัด',90,0,'pct')]},
+ {n:12,c:'#BF8B2E',en:'Responsible Consumption and Production',th:'แผนการบริโภคและการผลิตที่ยั่งยืน',ind:[
+  I('NY.ADJ.DRES.GN.ZS','Natural resources depletion','การลดลงของทรัพยากรธรรมชาติ',15,0,'gni'),
+  I('NY.ADJ.DCO2.GN.ZS','Carbon dioxide damage','ความเสียหายจากคาร์บอนไดออกไซด์',6,0,'gni')]},
+ {n:13,c:'#3F7E44',en:'Climate Action',th:'การรับมือการเปลี่ยนแปลงสภาพภูมิอากาศ',ind:[
+  I('EN.GHG.CO2.PC.CE.AR5','CO₂ emissions per capita (excl. LULUCF)','การปล่อย CO₂ ต่อหัว (ไม่รวม LULUCF)',23,0,'tpc'),
+  I('EN.GHG.ALL.PC.CE.AR5','Total GHG emissions per capita (excl. LULUCF)','การปล่อยก๊าซเรือนกระจกรวมต่อหัว',30,1,'tpc')]},
+ {n:14,c:'#0A97D9',en:'Life Below Water',th:'ทรัพยากรทางทะเล',ind:[
+  I('ER.MRN.PTMR.ZS','Marine protected areas','พื้นที่คุ้มครองทางทะเล',0,30,'pct')]},
+ {n:15,c:'#56C02B',en:'Life on Land',th:'ระบบนิเวศบนบก',ind:[
+  I('ER.LND.PTLD.ZS','Terrestrial protected areas','พื้นที่คุ้มครองบนบก',0,30,'pct'),
+  I('ER.PTD.TOTL.ZS','Terrestrial and marine protected areas','พื้นที่คุ้มครองบนบกและทางทะเลรวม',0,30,'pct')]},
+ {n:16,c:'#00689D',en:'Peace, Justice and Strong Institutions',th:'สันติภาพ ความยุติธรรม และสถาบันที่เข้มแข็ง',ind:[
+  I('VC.IHR.PSRC.P5','Intentional homicides','อัตราการฆาตกรรมโดยเจตนา',38,0.3,'p100k'),
+  I('SP.REG.BRTH.ZS','Completeness of birth registration','ความครบถ้วนของการจดทะเบียนเกิด',0,100,'pct'),
+  I('RL.EST','Rule of Law (estimate)','หลักนิติธรรม (ค่าประมาณ)',-2,2,'wgi',3),
+  I('CC.EST','Control of Corruption (estimate)','การควบคุมการทุจริต (ค่าประมาณ)',-2,2,'wgi',3),
+  I('PV.EST','Political Stability & Absence of Violence','เสถียรภาพทางการเมืองและการปราศจากความรุนแรง',-2,2,'wgi',3)]},
+ {n:17,c:'#19486A',en:'Partnerships for the Goals',th:'ความร่วมมือเพื่อการพัฒนาที่ยั่งยืน',ind:[
+  I('GC.TAX.TOTL.GD.ZS','Tax revenue','รายได้ภาษี',5,25,'gdp'),
+  I('SE.XPD.TOTL.GD.ZS','Government expenditure on education','รายจ่ายภาครัฐด้านการศึกษา',0,6,'gdp'),
+  I('SH.XPD.GHED.GD.ZS','Domestic general government health expenditure','รายจ่ายภาครัฐด้านสุขภาพ',0,8,'gdp'),
+  I('IQ.SPI.OVRL','Statistical Performance Indicators (overall)','ดัชนีประสิทธิภาพระบบสถิติ (SPI)',25,100,'s100')]}
+];
+
+const POV_DIMS = [
+ {n:1,c:'#c0392b',en:'Monetary poverty',th:'ความยากจนด้านรายได้',sen:'Monetary',sth:'รายได้',ind:[
+  I('SI.POV.DDAY','Poverty headcount at $3.00/day (2021 PPP)','สัดส่วนคนจนที่เส้น $3.00/วัน (PPP 2021)',70,0,'pct'),
+  I('SI.POV.LMIC','Poverty headcount at $4.20/day (2021 PPP)','สัดส่วนคนจนที่เส้น $4.20/วัน (PPP 2021)',85,0,'pct'),
+  I('SI.POV.UMIC','Poverty headcount at $8.30/day (2021 PPP)','สัดส่วนคนจนที่เส้น $8.30/วัน (PPP 2021)',95,0,'pct')]},
+ {n:2,c:'#e67e22',en:'Depth of poverty (poverty gap)',th:'ความลึกของความยากจน (ช่องว่างความยากจน)',sen:'Depth',sth:'ความลึก',ind:[
+  I('SI.POV.GAPS','Poverty gap at $3.00/day','ช่องว่างความยากจนที่เส้น $3.00/วัน',35,0,'pct'),
+  I('SI.POV.LMIC.GP','Poverty gap at $4.20/day','ช่องว่างความยากจนที่เส้น $4.20/วัน',45,0,'pct'),
+  I('SI.POV.UMIC.GP','Poverty gap at $8.30/day','ช่องว่างความยากจนที่เส้น $8.30/วัน',60,0,'pct')]},
+ {n:3,c:'#8e44ad',en:'National & societal poverty',th:'ความยากจนตามเส้นระดับชาติและเส้นทางสังคม',sen:'National',sth:'ระดับชาติ',ind:[
+  I('SI.POV.NAHC','Poverty headcount at national poverty lines','สัดส่วนคนจนตามเส้นความยากจนของประเทศ',70,0,'pct'),
+  I('SI.POV.SOPO','Poverty headcount at societal poverty line','สัดส่วนคนจนตามเส้นความยากจนทางสังคม',70,0,'pct')]},
+ {n:4,c:'#2c3e50',en:'Multidimensional poverty',th:'ความยากจนหลายมิติ',sen:'Multidimensional',sth:'หลายมิติ',ind:[
+  I('SI.POV.MPWB','Multidimensional poverty headcount (World Bank MPM)','สัดส่วนคนจนหลายมิติ (World Bank MPM)',80,0,'pct'),
+  I('SI.POV.MPUN','Multidimensional poverty headcount (UNDP & OPHI MPI)','สัดส่วนคนจนหลายมิติ (UNDP & OPHI MPI)',90,0,'pct')]},
+ {n:5,c:'#DD1367',en:'Inequality',th:'ความเหลื่อมล้ำ',sen:'Inequality',sth:'เหลื่อมล้ำ',ind:[
+  I('SI.POV.GINI','Gini index','ดัชนีจีนี (Gini)',63,27.5,'gini'),
+  I('SI.DST.FRST.20','Income share held by lowest 20%','ส่วนแบ่งรายได้ของกลุ่มล่างสุด 20%',3,10,'pct'),
+  I('SI.DST.10TH.10','Income share held by highest 10%','ส่วนแบ่งรายได้ของกลุ่มบนสุด 10%',50,20,'pct')]},
+ {n:6,c:'#26BDE2',en:'Living standards',th:'มาตรฐานการครองชีพ',sen:'Living std.',sth:'ครองชีพ',ind:[
+  I('EG.ELC.ACCS.ZS','Access to electricity','การเข้าถึงไฟฟ้า',10,100,'pct'),
+  I('SH.H2O.BASW.ZS','Basic drinking water services','การเข้าถึงน้ำดื่มขั้นพื้นฐาน',40,100,'pct'),
+  I('SH.STA.BASS.ZS','Basic sanitation services','การเข้าถึงสุขาภิบาลขั้นพื้นฐาน',10,100,'pct'),
+  I('EG.CFT.ACCS.ZS','Access to clean cooking fuels','การเข้าถึงเชื้อเพลิงหุงต้มสะอาด',2,100,'pct')]},
+ {n:7,c:'#4C9F38',en:'Education & nutrition',th:'การศึกษาและโภชนาการ',sen:'Educ. & nutr.',sth:'การศึกษา/โภชนาการ',ind:[
+  I('SE.PRM.CMPT.ZS','Primary completion rate','อัตราการสำเร็จการศึกษาระดับประถม',40,100,'pct'),
+  I('SE.ADT.LITR.ZS','Adult literacy rate','อัตราการรู้หนังสือของผู้ใหญ่',30,100,'pct'),
+  I('SH.STA.STNT.ZS','Stunting, children under 5','ภาวะเตี้ยแคระแกร็นในเด็กอายุต่ำกว่า 5 ปี',50,2.5,'pct'),
+  I('SN.ITK.DEFC.ZS','Prevalence of undernourishment','ความชุกของภาวะขาดสารอาหาร',42,2.5,'pct')]}
+];
+
+const MODES = {
+  sdg: {dims: SDG_DIMS, minDims: 12},
+  pov: {dims: POV_DIMS, minDims: 4}
+};
+
+/* ============================== I18N ============================== */
+const TX = {
+ th:{
+  appTitle:'SDG & Poverty Index Explorer', update:'อัปเดตข้อมูล', reset:'รีเซ็ตหน้า', source:'แหล่งข้อมูล',
+  dbUpdated:'ฐานข้อมูลอัปเดตล่าสุด', fetched:'ดึงข้อมูลเมื่อ', loading:'กำลังดึงข้อมูล…', loadingHist:'กำลังดึงข้อมูลย้อนหลังสำหรับกราฟ…',
+  rankTitleSdg:'อันดับ SDG Index ทั้ง 17 เป้าหมาย (ข้อมูลล่าสุด)', rankTitlePov:'อันดับ Poverty Index ทุกมิติ (ข้อมูลล่าสุด)',
+  rankSub:'{n} ประเทศที่มีข้อมูลเพียงพอ เรียงจากอันดับ 1 ถึงอันดับสุดท้าย • คลิกแถวเพื่อเลือกประเทศมาเปรียบเทียบ',
+  filterPh:'ค้นหาในตาราง…', sortDesc:'เรียง: อันดับ 1 → สุดท้าย', sortAsc:'เรียง: สุดท้าย → อันดับ 1',
+  rank:'อันดับ', country:'ประเทศ', score:'คะแนน', dataYear:'ปีข้อมูล', dims:'มิติ',
+  pickTitle:'เลือกประเทศ', pickSub:'พิมพ์ตัวอักษรภาษาอังกฤษเพียงตัวเดียว (เช่น T) รายชื่อประเทศจะเด้งขึ้นมาทันที เลือกได้ประเทศเดียวหรือหลายประเทศเพื่อเปรียบเทียบ (สูงสุด 15)',
+  pickPh:'พิมพ์ชื่อประเทศ เช่น T, Thai, Japan…', addTop5:'+ เพิ่ม 5 อันดับแรก', clearSel:'ล้างการเลือก',
+  noData:'ไม่มีข้อมูล', cmpTitleSdg:'ตารางข้อมูล SDG รายประเทศ', cmpTitlePov:'ตารางข้อมูล Poverty Index รายประเทศ',
+  cmpSub:'ค่าที่วัดได้จริง (ปีข้อมูล) และคะแนนมาตรฐาน 0–100 ของทุกมิติและทุกดัชนีชี้วัด',
+  selectFirst:'ยังไม่ได้เลือกประเทศ — เลือกจากช่องด้านบน หรือคลิกแถวในตารางอันดับ',
+  dimInd:'มิติ / ดัชนีชี้วัด', unit:'หน่วย', code:'รหัส', overall:'คะแนนรวม', rankRow:'อันดับโลก',
+  saveExcel:'บันทึกเป็น Excel', showCharts:'แสดงกราฟข้อมูล', hideCharts:'ซ่อนกราฟ',
+  chartsTitle:'กราฟข้อมูลดัชนีชี้วัด', chartsSub:'ทุกกราฟดาวน์โหลดเป็น PNG ได้ และเลือกได้ว่าจะแสดงตัวเลขบนกราฟแบบใด',
+  lblNone:'ไม่แสดงตัวเลข', lblAll:'แสดงทุกค่า', lblEvery:'แสดงทุกๆ N', lblLatest:'เฉพาะปีล่าสุด', labels:'ตัวเลขบนกราฟ', every:'N =',
+  dlPng:'ดาวน์โหลด PNG', dimension:'มิติ', indicator:'ตัวชี้วัด', year:'ปี',
+  dataChanged:'ฐานข้อมูลมีการเปลี่ยนแปลง — อัปเดตข้อมูลใหม่แล้ว', updated:'อัปเดตข้อมูลเรียบร้อย', fetchFail:'ดึงข้อมูลบางส่วนไม่สำเร็จ แสดงข้อมูลที่มีอยู่',
+  maxSel:'เลือกได้สูงสุด 15 ประเทศ', notRanked:'ข้อมูลไม่พอจัดอันดับ', legendG:'≥ 80 บรรลุ/ใกล้บรรลุ', legendY:'65–80 ท้าทายบางส่วน', legendO:'50–65 ท้าทายมาก', legendR:'< 50 ท้าทายอย่างยิ่ง', legendN:'ไม่มีข้อมูล',
+  scoreNote:'คะแนน', of:'จาก',
+  c_overall:'เปรียบเทียบคะแนนรวม', c_overall_d:'คะแนนดัชนีรวม (0–100) ของประเทศที่เลือก',
+  c_dims:'คะแนนรายมิติ (กราฟแท่งกลุ่ม)', c_dims_d:'เปรียบเทียบคะแนนแต่ละมิติระหว่างประเทศ',
+  c_radar:'โปรไฟล์รายมิติ (เรดาร์)', c_radar_d:'จุดแข็ง–จุดอ่อนของแต่ละประเทศในทุกมิติ',
+  c_trend:'แนวโน้มคะแนนรวมรายปี', c_trend_d:'คะแนนดัชนีรวมคำนวณย้อนหลังรายปี (ใช้ค่าล่าสุดที่มีภายใน 10 ปี)',
+  c_dimTrend:'แนวโน้มรายมิติ', c_dimTrend_d:'เลือกมิติเพื่อดูคะแนนย้อนหลังรายปี',
+  c_indTrend:'แนวโน้มค่าตัวชี้วัด (ค่าจริง)', c_indTrend_d:'ค่าจริงของตัวชี้วัดที่เลือก รายปี',
+  c_stack:'องค์ประกอบของคะแนนรวม (แท่งซ้อน)', c_stack_d:'แต่ละมิติมีส่วนต่อคะแนนรวมเท่าใด (ผลรวม = คะแนนรวม)',
+  c_world:'ตำแหน่งเทียบกับทั่วโลก', c_world_d:'จุดสีเทา = ทุกประเทศ (แกน X = อันดับ) จุดสี = ประเทศที่เลือก',
+  c_polar:'คะแนนรายมิติของประเทศเดียว (Polar area)', c_polar_d:'เลือกประเทศเพื่อดูสัดส่วนคะแนนทุกมิติ',
+  c_raw:'ค่าตัวชี้วัดล่าสุด (กราฟแท่ง)', c_raw_d:'ค่าจริงล่าสุดของตัวชี้วัดที่เลือก พร้อมปีข้อมูล',
+  allCountries:'ทุกประเทศ', selectedC:'ประเทศที่เลือก', noSeries:'ไม่มีข้อมูลสำหรับกราฟนี้',
+  descTitle:'คำอธิบายตาราง',
+  footer:'ข้อมูลดึงสดจาก World Bank Open Data API (World Development Indicators, Poverty & Inequality Platform, Worldwide Governance Indicators) และรายชื่อประเทศจาก REST Countries ทุกครั้งที่เปิดหน้า ระบบจะดึงข้อมูลใหม่อัตโนมัติเมื่อข้อมูลในเครื่องเก่ากว่า 6 ชั่วโมง และตรวจซ้ำทุก 6 ชั่วโมงขณะเปิดหน้าไว้ — เมื่อฐานข้อมูลต้นทางเปลี่ยน ตัวเลขในหน้านี้จะเปลี่ยนตาม SDG Index และ Poverty Index ในหน้านี้คำนวณด้วยวิธีแบบ SDSN Sustainable Development Report (ปรับค่าตัวชี้วัดเป็น 0–100 ระหว่างค่าต่ำสุดและค่าเป้าหมาย แล้วเฉลี่ยในมิติ และเฉลี่ยทุกมิติ) จากตัวชี้วัดของ World Bank จึงอาจไม่ตรงกับอันดับในรายงาน SDR ฉบับทางการ'
+ },
+ en:{
+  appTitle:'SDG & Poverty Index Explorer', update:'Update data', reset:'Reset page', source:'Source',
+  dbUpdated:'Database last updated', fetched:'Fetched', loading:'Loading data…', loadingHist:'Loading historical data for charts…',
+  rankTitleSdg:'SDG Index ranking — all 17 goals (latest data)', rankTitlePov:'Poverty Index ranking — all dimensions (latest data)',
+  rankSub:'{n} countries with sufficient data, ranked from first to last • click a row to add it to the comparison',
+  filterPh:'Filter table…', sortDesc:'Order: rank 1 → last', sortAsc:'Order: last → rank 1',
+  rank:'Rank', country:'Country', score:'Score', dataYear:'Data year', dims:'Dimensions',
+  pickTitle:'Select countries', pickSub:'Type a single English letter (e.g. T) and matching countries pop up instantly. Pick one country or several to compare (up to 15).',
+  pickPh:'Type a country, e.g. T, Thai, Japan…', addTop5:'+ Add top 5', clearSel:'Clear selection',
+  noData:'No data', cmpTitleSdg:'SDG data by country', cmpTitlePov:'Poverty Index data by country',
+  cmpSub:'Measured values (data year) and standardised 0–100 scores for every dimension and indicator',
+  selectFirst:'No country selected yet — pick from the box above or click a row in the ranking.',
+  dimInd:'Dimension / indicator', unit:'Unit', code:'Code', overall:'Overall score', rankRow:'World rank',
+  saveExcel:'Save as Excel', showCharts:'Show charts', hideCharts:'Hide charts',
+  chartsTitle:'Indicator charts', chartsSub:'Every chart can be downloaded as PNG, with a choice of which values to label.',
+  lblNone:'No labels', lblAll:'All values', lblEvery:'Every N', lblLatest:'Latest year only', labels:'Value labels', every:'N =',
+  dlPng:'Download PNG', dimension:'Dimension', indicator:'Indicator', year:'Year',
+  dataChanged:'The source database changed — data refreshed.', updated:'Data updated', fetchFail:'Some data could not be loaded; showing what is available.',
+  maxSel:'You can select up to 15 countries', notRanked:'Not enough data to rank', legendG:'≥ 80 achieved / on track', legendY:'65–80 challenges remain', legendO:'50–65 significant challenges', legendR:'< 50 major challenges', legendN:'No data',
+  scoreNote:'score', of:'of',
+  c_overall:'Overall score comparison', c_overall_d:'Overall index score (0–100) of the selected countries',
+  c_dims:'Scores by dimension (grouped bars)', c_dims_d:'Each dimension compared across countries',
+  c_radar:'Dimension profile (radar)', c_radar_d:'Strengths and weaknesses across all dimensions',
+  c_trend:'Overall score over time', c_trend_d:'Overall index recomputed for each year (latest value within 10 years)',
+  c_dimTrend:'Dimension trend', c_dimTrend_d:'Pick a dimension to see its score year by year',
+  c_indTrend:'Indicator trend (raw values)', c_indTrend_d:'Actual values of the selected indicator by year',
+  c_stack:'Composition of the overall score (stacked)', c_stack_d:'How much each dimension contributes (sum = overall score)',
+  c_world:'Position in the world', c_world_d:'Grey = all countries (X axis = rank); coloured = selected countries',
+  c_polar:'One country by dimension (polar area)', c_polar_d:'Pick a country to see all its dimension scores',
+  c_raw:'Latest indicator values (bars)', c_raw_d:'Latest actual value of the selected indicator, with its data year',
+  allCountries:'All countries', selectedC:'Selected', noSeries:'No data available for this chart',
+  descTitle:'About this table',
+  footer:'Data is fetched live from the World Bank Open Data API (World Development Indicators, Poverty & Inequality Platform, Worldwide Governance Indicators) and the country list from REST Countries every time the page opens. Data older than 6 hours is re-fetched automatically, and the page checks again every 6 hours while open — when the source database changes, the numbers here change with it. The SDG Index and Poverty Index on this page are computed with an SDSN Sustainable Development Report–style method (each indicator rescaled to 0–100 between a lower bound and a target, averaged within each dimension, then across dimensions) from World Bank indicators, so they may differ from the official SDR ranking.'
+ }
+};
+const t = (k, vars) => { let s = (TX[state.lang][k] ?? k); if (vars) for (const v in vars) s = s.replace('{'+v+'}', vars[v]); return s; };
+
+/* ============================== STATE ============================== */
+const state = {
+  mode:'sdg', lang:'th', countries:[], byIso:{}, wbSet:new Set(),
+  latest:{}, lastUpdated:null, fetchedAt:null,
+  scores:{sdg:{},pov:{}}, rank:{sdg:[],pov:[]},
+  selected:[], hist:{}, histLoaded:{}, chartsOn:false, charts:{}, lbl:{}, opt:{},
+  sortAsc:false, filter:'', loading:false
+};
+const PALETTE = ['#0b6e8a','#e4572e','#2e9d5b','#8e44ad','#f0a202','#d81b60','#17a2b8','#6d4c41','#3949ab','#7cb342','#ff7043','#546e7a','#c2185b','#00897b','#5e35b1'];
+const colorOf = iso => PALETTE[state.selected.indexOf(iso) % PALETTE.length];
+
+/* ============================== HELPERS ============================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const avg = a => a.reduce((x,y)=>x+y,0)/a.length;
+const clamp = v => Math.max(0, Math.min(100, v));
+function fmt(v, d){ if (v == null || isNaN(v)) return '–'; const a = Math.abs(v); const dd = d != null ? d : (a >= 1000 ? 0 : a >= 100 ? 1 : 2); return Number(v).toLocaleString('en-US',{maximumFractionDigits:dd}); }
+const fs = v => v == null ? '–' : Number(v).toFixed(1);
+const cls = s => s == null ? 'n' : s >= 80 ? 'g' : s >= 65 ? 'y' : s >= 50 ? 'o' : 'r';
+const flag = cc => (cc && /^[A-Z]{2}$/.test(cc)) ? String.fromCodePoint(...[...cc].map(c => 127397 + c.charCodeAt(0))) : '🏳️';
+const cName = iso => { const c = state.byIso[iso]; return c ? (state.lang === 'th' ? c.th : c.en) : iso; };
+const dimName = d => state.lang === 'th' ? d.th : d.en;
+const dimShort = d => state.mode === 'sdg' ? 'SDG ' + d.n : (state.lang === 'th' ? d.sth : d.sen);
+const indName = x => state.lang === 'th' ? x.th : x.en;
+const unitName = x => (UNITS[x.unit] || {})[state.lang] || '';
+const norm = (x, v) => (v == null || isNaN(v)) ? null : clamp((v - x.lo) / (x.hi - x.lo) * 100);
+function toast(msg){ const el = $('#toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => el.style.display = 'none', 3500); }
+function progress(f, msg){ const p = $('#prog'); if (f == null){ p.style.display = 'none'; $('#stMsg').textContent = ''; return; } p.style.display = 'block'; p.firstElementChild.style.width = Math.round(f*100) + '%'; if (msg) $('#stMsg').textContent = msg; }
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+async function getJSON(url, tries = 3, timeout = 45000){
+  for (let i = 0; i < tries; i++){
+    try {
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), timeout);
+      const r = await fetch(url, {signal: ctl.signal}); clearTimeout(tm);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) { if (i === tries - 1) throw e; await new Promise(r => setTimeout(r, 900 * (i + 1))); }
+  }
+}
+async function wbAll(url, tries, timeout){
+  const j = await getJSON(url + '&page=1', tries, timeout);
+  if (!Array.isArray(j) || !j[0] || j[0].message) return {rows: [], lu: null};
+  let rows = j[1] || []; const pages = j[0].pages || 1;
+  for (let p = 2; p <= pages; p++){ const k = await getJSON(url + '&page=' + p); if (Array.isArray(k) && k[1]) rows = rows.concat(k[1]); }
+  return {rows, lu: j[0].lastupdated || null};
+}
+async function pool(items, n, fn){ let i = 0; await Promise.all(Array.from({length: Math.min(n, items.length)}, async () => { while (i < items.length){ const k = i++; await fn(items[k], k); } })); }
+function uniqueInds(){ const m = new Map(); for (const md of Object.values(MODES)) for (const d of md.dims) for (const x of d.ind) if (!m.has(x.code)) m.set(x.code, x); return [...m.values()]; }
+const srcQ = x => x.src ? '&source=' + x.src : '';
+
+/* ============================== COUNTRIES ============================== */
+async function loadCountries(){
+  let dnTh = null, dnEn = null;
+  try { dnTh = new Intl.DisplayNames(['th'], {type:'region'}); dnEn = new Intl.DisplayNames(['en'], {type:'region'}); } catch(e){}
+  const [rc, wb] = await Promise.allSettled([getJSON(CFG.COUNTRIES_URL), wbAll(CFG.WB + '/country?format=json&per_page=400')]);
+  const by = {};
+  if (rc.status === 'fulfilled' && Array.isArray(rc.value)){
+    for (const c of rc.value){
+      let iso = c.cca3; if (iso === 'UNK') iso = 'XKX';
+      by[iso] = {iso, cc: c.cca2, en: c.name?.common || iso};
+    }
+  }
+  if (wb.status === 'fulfilled'){
+    for (const c of wb.value.rows){
+      if (!c.region || c.region.id === 'NA') continue;   // ตัดกลุ่มประเทศ/ภูมิภาค
+      state.wbSet.add(c.id);
+      if (!by[c.id]) by[c.id] = {iso: c.id, cc: /^[A-Z]{2}$/.test(c.iso2Code) ? c.iso2Code : '', en: c.name};
+    }
+  }
+  for (const iso in by){
+    const c = by[iso];
+    let th = null; try { th = c.cc && dnTh ? dnTh.of(c.cc) : null; } catch(e){}
+    c.th = (th && th !== c.cc) ? th : c.en;
+    if (!c.en && dnEn && c.cc) c.en = dnEn.of(c.cc);
+  }
+  state.byIso = by;
+  state.countries = Object.values(by).sort((a, b) => a.en.localeCompare(b.en));
+  if (!state.wbSet.size) state.countries.forEach(c => state.wbSet.add(c.iso));
+}
+
+/* ============================== LATEST DATA ============================== */
+function readCache(){ try { const s = localStorage.getItem(CFG.CACHE_KEY); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
+function writeCache(p){ try { localStorage.setItem(CFG.CACHE_KEY, JSON.stringify(p)); } catch(e){} }
+
+async function fetchLatest(x){
+  const {rows, lu} = await wbAll(`${CFG.WB}/country/all/indicator/${x.code}?format=json&mrnev=1&per_page=20000${srcQ(x)}`);
+  const out = {};
+  for (const r of rows) if (r.value != null && r.countryiso3code) out[r.countryiso3code] = [r.value, parseInt(r.date)];
+  return {data: out, lu};
+}
+
+async function loadLatest(force){
+  if (state.loading) return;
+  const cached = readCache();
+  if (cached && !force && !Object.keys(state.latest).length){ applyLatest(cached); if (Date.now() - cached.t < CFG.CACHE_TTL) return; }
+  state.loading = true; progress(0, t('loading'));
+  const inds = uniqueInds(); const latest = {}; let lu = null, fails = 0, done = 0;
+  await pool(inds, CFG.CONCURRENCY, async x => {
+    try { const r = await fetchLatest(x); latest[x.code] = r.data; if (r.lu && (!lu || r.lu > lu)) lu = r.lu; }
+    catch(e){ fails++; latest[x.code] = state.latest[x.code] || {}; }
+    progress(++done / inds.length, t('loading') + ` ${done}/${inds.length}`);
+  });
+  const prevSig = signature(state.latest);
+  const payload = {t: Date.now(), latest, lu};
+  writeCache(payload);
+  state.loading = false; progress(null);
+  const changed = prevSig && prevSig !== signature(latest);
+  state.hist = {}; state.histLoaded = {};
+  applyLatest(payload);
+  if (fails) toast(t('fetchFail')); else if (changed) toast(t('dataChanged')); else if (force) toast(t('updated'));
+  if (state.chartsOn) showCharts();
+}
+function signature(latest){ const k = Object.keys(latest || {}); if (!k.length) return null; let s = 0; for (const c of k) for (const i in latest[c]){ s += latest[c][i][0] * 1e-3 + latest[c][i][1]; } return k.length + ':' + s.toFixed(3); }
+
+function applyLatest(p){
+  state.latest = p.latest || {}; state.lastUpdated = p.lu; state.fetchedAt = p.t;
+  computeAll(); renderAll();
+}
+
+/* ============================== SCORING ============================== */
+function scoreFor(mode, getter){
+  const M = MODES[mode]; let sum = 0, cnt = 0, maxY = 0;
+  const dims = M.dims.map(d => {
+    const inds = d.ind.map(x => { const o = getter(x.code); if (!o) return {v:null,y:null,s:null}; if (o[1] > maxY) maxY = o[1]; return {v:o[0], y:o[1], s:norm(x, o[0])}; });
+    const ss = inds.map(z => z.s).filter(z => z != null);
+    const score = ss.length ? avg(ss) : null; if (score != null){ sum += score; cnt++; }
+    return {score, inds};
+  });
+  return {index: cnt >= M.minDims ? sum / cnt : null, dims, nDims: cnt, year: maxY || null};
+}
+function computeAll(){
+  for (const mode of ['sdg','pov']){
+    const sc = {};
+    for (const c of state.countries) sc[c.iso] = scoreFor(mode, code => state.latest[code]?.[c.iso] || null);
+    state.scores[mode] = sc;
+    state.rank[mode] = Object.keys(sc).filter(i => sc[i].index != null).sort((a, b) => sc[b].index - sc[a].index);
+  }
+}
+const rankOf = (iso, mode = state.mode) => { const i = state.rank[mode].indexOf(iso); return i < 0 ? null : i + 1; };
+
+/* ============================== RENDER: STATIC ============================== */
+function renderStatic(){
+  document.documentElement.lang = state.lang;
+  document.querySelectorAll('[data-i]').forEach(el => el.textContent = t(el.dataset.i));
+  document.querySelectorAll('[data-ph]').forEach(el => el.placeholder = t(el.dataset.ph));
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === state.mode));
+  document.querySelectorAll('#langSeg button').forEach(b => b.classList.toggle('on', b.dataset.lang === state.lang));
+  $('#stLu').textContent = state.lastUpdated || '–';
+  $('#stFetched').textContent = state.fetchedAt ? new Date(state.fetchedAt).toLocaleString(state.lang === 'th' ? 'th-TH' : 'en-GB') : '–';
+  $('#legend').innerHTML = ['g','y','o','r','n'].map(k => `<span><span class="mini ${k}"></span>${t('legend' + k.toUpperCase())}</span>`).join('');
+  $('#footer').textContent = t('footer');
+  $('#btnSort').textContent = state.sortAsc ? t('sortAsc') : t('sortDesc');
+}
+
+/* ============================== RENDER: RANKING ============================== */
+function renderRanking(){
+  const M = MODES[state.mode], sc = state.scores[state.mode];
+  let list = state.rank[state.mode].slice();
+  $('#rankTitle').textContent = t(state.mode === 'sdg' ? 'rankTitleSdg' : 'rankTitlePov');
+  $('#rankSub').textContent = t('rankSub', {n: list.length});
+  if (state.sortAsc) list.reverse();
+  const q = state.filter.trim().toLowerCase();
+  if (q) list = list.filter(i => { const c = state.byIso[i]; return c.en.toLowerCase().includes(q) || c.th.toLowerCase().includes(q) || i.toLowerCase().includes(q); });
+  const head = `<thead><tr><th class="num">${t('rank')}</th><th>${t('country')}</th><th class="num">${t('score')}</th><th class="num">${t('dataYear')}</th>${M.dims.map(d => `<th title="${esc(dimName(d))}" style="text-align:center;padding:7px 2px"><span class="sw" style="background:${d.c};margin:0"></span><div style="font-size:11px">${esc(state.mode === 'sdg' ? d.n : dimShort(d))}</div></th>`).join('')}</tr></thead>`;
+  const body = list.map(i => {
+    const s = sc[i], c = state.byIso[i];
+    return `<tr class="click ${state.selected.includes(i) ? 'picked' : ''}" data-iso="${i}"><td class="num"><b>${rankOf(i)}</b></td><td>${flag(c.cc)} ${esc(cName(i))}</td><td class="num"><span class="cell ${cls(s.index)}">${fs(s.index)}</span></td><td class="num">${s.year || '–'}</td>${s.dims.map((d, k) => `<td style="text-align:center;padding:7px 2px" title="${esc(dimName(M.dims[k]))}: ${fs(d.score)}"><span class="mini ${cls(d.score)}"></span></td>`).join('')}</tr>`;
+  }).join('');
+  $('#rankTable').innerHTML = head + `<tbody>${body || `<tr><td colspan="${4 + M.dims.length}" class="empty">${state.loading ? t('loading') : t('noData')}</td></tr>`}</tbody>`;
+}
+
+/* ============================== RENDER: PICKER ============================== */
+let ddIdx = -1;
+function matches(q){
+  q = q.trim().toLowerCase(); if (!q) return state.countries;
+  const starts = state.countries.filter(c => c.en.toLowerCase().startsWith(q) || c.th.toLowerCase().startsWith(q) || c.iso.toLowerCase() === q);
+  if (starts.length) return starts;
+  return state.countries.filter(c => c.en.toLowerCase().includes(q) || c.th.toLowerCase().includes(q));
+}
+function renderDD(){
+  const list = matches($('#cInput').value), dd = $('#cDD');
+  if (!list.length){ dd.style.display = 'none'; return; }
+  ddIdx = Math.min(ddIdx, list.length - 1);
+  dd.innerHTML = list.map((c, k) => {
+    const sc = state.scores[state.mode][c.iso]; const has = sc && sc.nDims > 0;
+    const picked = state.selected.includes(c.iso);
+    return `<div data-iso="${c.iso}" class="${k === ddIdx ? 'act' : ''}">${flag(c.cc)} <span>${esc(c.en)}${state.lang === 'th' && c.th !== c.en ? ` <small>· ${esc(c.th)}</small>` : ''}</span> ${picked ? '✓' : ''} ${!has ? `<span class="badge">${t('noData')}</span>` : ''}</div>`;
+  }).join('');
+  dd.style.display = 'block';
+  const act = dd.querySelector('.act'); if (act) act.scrollIntoView({block:'nearest'});
+}
+function toggleCountry(iso, onlyAdd){
+  const k = state.selected.indexOf(iso);
+  if (k >= 0){ if (!onlyAdd) state.selected.splice(k, 1); }
+  else { if (state.selected.length >= CFG.MAX_SELECT){ toast(t('maxSel')); return; } state.selected.push(iso); }
+  onSelectionChange();
+}
+function onSelectionChange(){ renderChips(); renderRanking(); renderCompare(); if (state.chartsOn) showCharts(); }
+function renderChips(){
+  $('#chips').innerHTML = state.selected.map(i => `<span class="chip" style="border-color:${colorOf(i)}"><span class="sw" style="background:${colorOf(i)}"></span>${flag(state.byIso[i]?.cc)} ${esc(cName(i))}<button data-rm="${i}" title="remove">×</button></span>`).join('');
+}
+
+/* ============================== RENDER: COMPARISON ============================== */
+function renderCompare(){
+  const M = MODES[state.mode], sel = state.selected;
+  $('#cmpTitle').textContent = t(state.mode === 'sdg' ? 'cmpTitleSdg' : 'cmpTitlePov');
+  $('#cmpSub').textContent = t('cmpSub');
+  $('#btnXlsx').disabled = !sel.length;
+  if (!sel.length){ $('#cmpBody').innerHTML = `<div class="empty">${t('selectFirst')}</div>`; return; }
+  const sc = state.scores[state.mode];
+  const nR = state.rank[state.mode].length;
+  let h = `<div class="tablebox"><table><thead><tr><th>${t('dimInd')}</th><th>${t('unit')}</th>${sel.map(i => `<th class="num"><span class="sw" style="background:${colorOf(i)}"></span>${flag(state.byIso[i]?.cc)} ${esc(cName(i))}</th>`).join('')}</tr></thead><tbody>`;
+  h += `<tr class="idxrow"><td>${state.mode === 'sdg' ? 'SDG Index' : 'Poverty Index'} — ${t('overall')}</td><td>0–100</td>${sel.map(i => `<td class="num"><span class="cell ${cls(sc[i]?.index)}">${fs(sc[i]?.index)}</span></td>`).join('')}</tr>`;
+  h += `<tr><td>${t('rankRow')}</td><td></td>${sel.map(i => { const r = rankOf(i); return `<td class="num">${r ? `${r} / ${nR}` : `<small class="muted">${t('notRanked')}</small>`}</td>`; }).join('')}</tr>`;
+  M.dims.forEach((d, k) => {
+    h += `<tr class="dimrow"><td class="dimname"><span class="sw" style="background:${d.c}"></span>${state.mode === 'sdg' ? 'SDG ' + d.n + ': ' : (k+1) + '. '}${esc(dimName(d))}</td><td>${t('scoreNote')} 0–100</td>${sel.map(i => `<td class="num"><span class="cell ${cls(sc[i]?.dims[k].score)}">${fs(sc[i]?.dims[k].score)}</span></td>`).join('')}</tr>`;
+    d.ind.forEach((x, j) => {
+      h += `<tr><td class="indname">${esc(indName(x))} <a class="badge" href="https://data.worldbank.org/indicator/${x.code}" target="_blank" rel="noopener">${x.code}</a></td><td>${esc(unitName(x))}</td>${sel.map(i => { const o = sc[i]?.dims[k].inds[j]; return o && o.v != null ? `<td class="num">${fmt(o.v)} <small class="muted">(${o.y})</small> <span class="cell ${cls(o.s)}" style="min-width:30px">${fs(o.s)}</span></td>` : `<td class="num"><span class="muted">–</span></td>`; }).join('')}</tr>`;
+    });
+  });
+  h += `</tbody></table></div>`;
+  h += `<div class="desc"><b>${t('descTitle')}</b>${describe()}</div>`;
+  $('#cmpBody').innerHTML = h;
+}
+
+function describe(){
+  const M = MODES[state.mode], sc = state.scores[state.mode], sel = state.selected, th = state.lang === 'th';
+  const nR = state.rank[state.mode].length;
+  const general = state.mode === 'sdg'
+    ? (th ? `<p style="margin:6px 0 0">ตารางนี้แสดงผลการดำเนินงานตามเป้าหมายการพัฒนาที่ยั่งยืน (SDGs) ทั้ง 17 เป้าหมาย แถวสีพื้นคือ "มิติ" (เป้าหมาย SDG) และแถวย่อยคือ "ดัชนีชี้วัด" ในแต่ละมิติ แต่ละช่องแสดง <b>ค่าที่วัดได้จริง</b> ตามด้วย (ปีของข้อมูล) และ <b>คะแนนมาตรฐาน 0–100</b> ซึ่ง 100 หมายถึงบรรลุค่าเป้าหมาย คะแนนมิติ = ค่าเฉลี่ยของคะแนนตัวชี้วัด และคะแนน SDG Index = ค่าเฉลี่ยของคะแนนทุกมิติที่มีข้อมูล (ต้องมีอย่างน้อย ${M.minDims} จาก 17 มิติจึงจะจัดอันดับ)</p>`
+          : `<p style="margin:6px 0 0">This table shows performance on all 17 Sustainable Development Goals. Shaded rows are the <i>dimensions</i> (SDGs); the rows beneath are the <i>indicators</i> used for each. Each cell gives the <b>measured value</b>, its (data year), and a <b>standardised score 0–100</b>, where 100 means the target is reached. A goal score is the mean of its indicator scores, and the SDG Index is the mean of all goal scores with data (at least ${M.minDims} of 17 goals are needed for a rank).</p>`)
+    : (th ? `<p style="margin:6px 0 0">ตารางนี้แสดงดัชนีความยากจน (Poverty Index) ใน 7 มิติ ได้แก่ ความยากจนด้านรายได้ ความลึกของความยากจน ความยากจนตามเส้นระดับชาติ ความยากจนหลายมิติ (MPI) ความเหลื่อมล้ำ มาตรฐานการครองชีพ และการศึกษา/โภชนาการ แต่ละช่องแสดง <b>ค่าที่วัดได้จริง</b> (ปีข้อมูล) และ <b>คะแนน 0–100</b> โดย <b>100 = ความยากจน/การขาดแคลนต่ำที่สุด</b> ค่าดัชนีรวม = ค่าเฉลี่ยทุกมิติที่มีข้อมูล (ต้องมีอย่างน้อย ${M.minDims} มิติ) อันดับ 1 คือประเทศที่มีความยากจนต่ำที่สุด</p>`
+          : `<p style="margin:6px 0 0">This table shows the Poverty Index across 7 dimensions: monetary poverty, depth of poverty, national & societal poverty, multidimensional poverty (MPI), inequality, living standards, and education/nutrition. Each cell gives the <b>measured value</b> (data year) and a <b>0–100 score</b>, where <b>100 = lowest poverty/deprivation</b>. The overall index is the mean of all dimensions with data (at least ${M.minDims} required). Rank 1 is the country with the least poverty.</p>`);
+  const items = [];
+  const ranked = sel.filter(i => sc[i]?.index != null).sort((a, b) => sc[b].index - sc[a].index);
+  if (ranked.length > 1){
+    const a = ranked[0], z = ranked[ranked.length - 1];
+    items.push(th ? `คะแนนรวมสูงสุดในกลุ่มที่เลือก: <b>${esc(cName(a))}</b> (${fs(sc[a].index)}, อันดับ ${rankOf(a)} จาก ${nR}) ต่ำสุด: <b>${esc(cName(z))}</b> (${fs(sc[z].index)}, อันดับ ${rankOf(z)})`
+                  : `Highest overall score in this group: <b>${esc(cName(a))}</b> (${fs(sc[a].index)}, rank ${rankOf(a)} of ${nR}); lowest: <b>${esc(cName(z))}</b> (${fs(sc[z].index)}, rank ${rankOf(z)}).`);
+  }
+  for (const i of sel){
+    const s = sc[i]; if (!s || !s.nDims){ items.push(`<b>${esc(cName(i))}</b>: ${t('noData')}`); continue; }
+    const ds = s.dims.map((d, k) => ({k, v: d.score})).filter(o => o.v != null).sort((a, b) => b.v - a.v);
+    const best = ds[0], worst = ds[ds.length - 1];
+    items.push(th ? `<b>${esc(cName(i))}</b>: คะแนนรวม ${fs(s.index)} — มิติที่โดดเด่นที่สุดคือ "${esc(dimName(M.dims[best.k]))}" (${fs(best.v)}) และมิติที่ต้องพัฒนามากที่สุดคือ "${esc(dimName(M.dims[worst.k]))}" (${fs(worst.v)}) มีข้อมูล ${s.nDims}/${M.dims.length} มิติ`
+                  : `<b>${esc(cName(i))}</b>: overall ${fs(s.index)} — strongest dimension "${esc(dimName(M.dims[best.k]))}" (${fs(best.v)}), weakest "${esc(dimName(M.dims[worst.k]))}" (${fs(worst.v)}); data for ${s.nDims}/${M.dims.length} dimensions.`);
+  }
+  return general + `<ul>${items.map(x => `<li>${x}</li>`).join('')}</ul>`;
+}
+
+/* ============================== EXCEL ============================== */
+function exportCompare(){
+  if (!window.XLSX) return;
+  const M = MODES[state.mode], sc = state.scores[state.mode], sel = state.selected;
+  const head = [t('dimension'), t('indicator'), t('code'), t('unit')];
+  sel.forEach(i => head.push(`${cName(i)} – value`, `${cName(i)} – ${t('year')}`, `${cName(i)} – ${t('score')}`));
+  const aoa = [head];
+  const r1 = [(state.mode === 'sdg' ? 'SDG Index' : 'Poverty Index'), t('overall'), '', '0–100']; sel.forEach(i => r1.push('', sc[i]?.year ?? '', round1(sc[i]?.index))); aoa.push(r1);
+  const r2 = ['', t('rankRow'), '', '']; sel.forEach(i => r2.push('', '', rankOf(i) ?? '')); aoa.push(r2);
+  M.dims.forEach((d, k) => {
+    const dr = [(state.mode === 'sdg' ? 'SDG ' + d.n + ': ' : '') + dimName(d), '', '', '0–100']; sel.forEach(i => dr.push('', '', round1(sc[i]?.dims[k].score))); aoa.push(dr);
+    d.ind.forEach((x, j) => { const row = ['', indName(x), x.code, unitName(x)]; sel.forEach(i => { const o = sc[i]?.dims[k].inds[j]; row.push(o?.v ?? '', o?.y ?? '', round1(o?.s)); }); aoa.push(row); });
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{wch:44},{wch:52},{wch:22},{wch:18}, ...sel.flatMap(() => [{wch:14},{wch:8},{wch:8}])];
+  XLSX.utils.book_append_sheet(wb, ws, 'Comparison');
+  XLSX.utils.book_append_sheet(wb, rankingSheet(), 'Ranking');
+  XLSX.utils.book_append_sheet(wb, notesSheet(), 'Notes');
+  XLSX.writeFile(wb, `${state.mode === 'sdg' ? 'SDG' : 'Poverty'}_comparison_${today()}.xlsx`);
+}
+function round1(v){ return v == null ? '' : Math.round(v * 10) / 10; }
+function rankingSheet(){
+  const M = MODES[state.mode], sc = state.scores[state.mode];
+  const aoa = [[t('rank'), 'ISO3', t('country'), t('score'), t('dataYear'), ...M.dims.map(d => dimShort(d) + ' ' + dimName(d))]];
+  state.rank[state.mode].forEach((i, k) => aoa.push([k + 1, i, cName(i), round1(sc[i].index), sc[i].year, ...sc[i].dims.map(d => round1(d.score))]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{wch:6},{wch:6},{wch:30},{wch:8},{wch:9}]; return ws;
+}
+function notesSheet(){
+  return XLSX.utils.aoa_to_sheet([[t('source'), 'World Bank Open Data API — https://data.worldbank.org'], [t('dbUpdated'), state.lastUpdated || ''], [t('fetched'), new Date(state.fetchedAt || Date.now()).toISOString()], ['Method', t('footer')]]);
+}
+function exportRanking(){ if (!window.XLSX) return; const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, rankingSheet(), 'Ranking'); XLSX.utils.book_append_sheet(wb, notesSheet(), 'Notes'); XLSX.writeFile(wb, `${state.mode === 'sdg' ? 'SDG' : 'Poverty'}_ranking_${today()}.xlsx`); }
+
+/* ============================== HISTORY ============================== */
+async function ensureHist(mode, isos, onProg){
+  const wbIsos = isos.filter(i => state.wbSet.has(i)); if (!wbIsos.length) return;
+  const inds = [...new Map(MODES[mode].dims.flatMap(d => d.ind).map(x => [x.code, x])).values()];
+  const y = new Date().getFullYear();
+  const tasks = inds.map(x => ({x, need: wbIsos.filter(i => !(state.histLoaded[x.code] && state.histLoaded[x.code].has(i)))})).filter(o => o.need.length);
+  if (!tasks.length) return;
+  let done = 0; progress(0, t('loadingHist'));
+  await pool(tasks, 8, async ({x, need}) => {
+    try {
+      const {rows} = await wbAll(`${CFG.WB}/country/${need.join(';')}/indicator/${x.code}?format=json&per_page=20000&date=${CFG.HIST_FROM}:${y}${srcQ(x)}`, 2, 20000);
+      const h = state.hist[x.code] || (state.hist[x.code] = {});
+      need.forEach(i => h[i] = []);
+      for (const r of rows){ if (r.value == null || !r.countryiso3code) continue; (h[r.countryiso3code] || (h[r.countryiso3code] = [])).push([parseInt(r.date), r.value]); }
+      need.forEach(i => h[i].sort((a, b) => a[0] - b[0]));
+      const s = state.histLoaded[x.code] || (state.histLoaded[x.code] = new Set()); need.forEach(i => s.add(i));
+    } catch(e){ const h = state.hist[x.code] || (state.hist[x.code] = {}); need.forEach(i => { if (!h[i]) h[i] = []; }); }
+    progress(++done / tasks.length, t('loadingHist') + ` ${done}/${tasks.length}`);
+    if (onProg) onProg(done, tasks.length);
+  });
+  progress(null);
+}
+function histAt(code, iso, Y, locf){ const a = state.hist[code]?.[iso]; if (!a) return null; let r = null; for (const [yr, v] of a){ if (yr > Y) break; if (Y - yr <= locf) r = [v, yr]; } return r; }
+function yearsRange(){
+  let maxY = CFG.CHART_FROM;
+  for (const d of MODES[state.mode].dims) for (const x of d.ind) for (const i of state.selected){ const a = state.hist[x.code]?.[i]; if (a && a.length) maxY = Math.max(maxY, a[a.length - 1][0]); }
+  const ys = []; for (let y = CFG.CHART_FROM; y <= maxY; y++) ys.push(y); return ys;
+}
+
+/* ============================== CHARTS ============================== */
+if (window.Chart){
+  if (window.ChartDataLabels) Chart.register(ChartDataLabels);
+  Chart.register({id:'bgFill', beforeDraw(c){ const x = c.ctx; x.save(); x.globalCompositeOperation = 'destination-over'; x.fillStyle = cssVar('--card') || '#fff'; x.fillRect(0, 0, c.width, c.height); x.restore(); }});
+}
+const LBL_DEFAULT = {overall:'all', dims:'none', radar:'none', trend:'latest', dimTrend:'latest', indTrend:'latest', stack:'none', world:'all', polar:'all', raw:'all'};
+
+function lastIdx(arr){ for (let k = arr.length - 1; k >= 0; k--){ const v = arr[k]; if (v != null && !(typeof v === 'object' && v.y == null)) return k; } return -1; }
+function labelVisible(id, ctx){
+  const L = state.lbl[id] || {mode: LBL_DEFAULT[id], n: 10};
+  const v = ctx.dataset.data[ctx.dataIndex];
+  if (v == null || (typeof v === 'object' && v.y == null) || L.mode === 'none') return false;
+  if (ctx.dataset._noLabel) return false;
+  if (L.mode === 'all') return true;
+  if (L.mode === 'latest') return ctx.dataIndex === lastIdx(ctx.dataset.data);
+  if (L.mode === 'every'){ const n = Math.max(1, parseInt(L.n) || 1); return ctx.dataIndex % n === 0 || ctx.dataIndex === lastIdx(ctx.dataset.data); }
+  return false;
+}
+function dl(id, extra){ return Object.assign({display: ctx => labelVisible(id, ctx), formatter: v => typeof v === 'object' && v ? fs(v.y) : fmt(v, Math.abs(v) >= 100 ? 0 : 1), color: cssVar('--text'), font:{size:10, weight:'600'}, anchor:'end', align:'end', offset:2, clamp:true}, extra || {}); }
+function baseOpts(id, title, extra){
+  return Object.assign({responsive:true, maintainAspectRatio:false, animation:{duration:300},
+    plugins:{title:{display:true, text:title, color:cssVar('--text'), font:{size:13, weight:'600'}}, legend:{labels:{color:cssVar('--text'), boxWidth:12}}, datalabels: dl(id)},
+  }, extra || {});
+}
+const axis = (ttl, more) => Object.assign({ticks:{color:cssVar('--muted')}, grid:{color:cssVar('--line')}, title: ttl ? {display:true, text:ttl, color:cssVar('--muted')} : undefined}, more || {});
+function lineDS(iso, data){ return {label: cName(iso), data, borderColor: colorOf(iso), backgroundColor: colorOf(iso), tension:.25, spanGaps:true, pointRadius:2.5, borderWidth:2}; }
+
+function chartSpecs(){
+  const M = MODES[state.mode], sc = state.scores[state.mode], sel = state.selected;
+  const ys = yearsRange();
+  const allInds = M.dims.flatMap((d, k) => d.ind.map((x, j) => ({x, k, j, key: k + ':' + j})));
+  const dimOpts = () => M.dims.map((d, k) => `<option value="${k}">${esc(dimShort(d) + ' – ' + dimName(d))}</option>`).join('');
+  const indOpts = () => allInds.map(o => `<option value="${o.key}">${esc(dimShort(M.dims[o.k]) + ' · ' + indName(o.x))}</option>`).join('');
+  const cOpts = () => sel.map(i => `<option value="${i}">${esc(cName(i))}</option>`).join('');
+  const idxName = state.mode === 'sdg' ? 'SDG Index' : 'Poverty Index';
+  return [
+   {id:'overall', time:false, h:340, build: T => ({type:'bar',
+     data:{labels: sel.map(cName), datasets:[{label: idxName, data: sel.map(i => sc[i]?.index ?? null), backgroundColor: sel.map(colorOf), borderRadius:6}]},
+     options: baseOpts('overall', T, {plugins:{title:{display:true,text:T,color:cssVar('--text')}, legend:{display:false}, datalabels: dl('overall')}, scales:{y: axis(t('score'), {min:0, max:100}), x: axis()}})})},
+   {id:'dims', time:false, h:380, build: T => ({type:'bar',
+     data:{labels: M.dims.map(dimShort), datasets: sel.map(i => ({label: cName(i), data: sc[i]?.dims.map(d => d.score) ?? [], backgroundColor: colorOf(i), borderRadius:3}))},
+     options: baseOpts('dims', T, {scales:{y: axis(t('score'), {min:0, max:100}), x: axis()}, plugins:{title:{display:true,text:T,color:cssVar('--text')}, legend:{labels:{color:cssVar('--text'),boxWidth:12}}, datalabels: dl('dims', {rotation:-90, align:'end', anchor:'end', font:{size:9}}), tooltip:{callbacks:{title: it => dimName(M.dims[it[0].dataIndex])}}}})})},
+   {id:'radar', time:false, h:440, build: T => ({type:'radar',
+     data:{labels: M.dims.map(dimShort), datasets: sel.map(i => ({label: cName(i), data: sc[i]?.dims.map(d => d.score) ?? [], borderColor: colorOf(i), backgroundColor: colorOf(i) + '22', pointBackgroundColor: colorOf(i), borderWidth:2}))},
+     options: baseOpts('radar', T, {scales:{r:{min:0, max:100, ticks:{color:cssVar('--muted'), backdropColor:'transparent', stepSize:20}, grid:{color:cssVar('--line')}, angleLines:{color:cssVar('--line')}, pointLabels:{color:cssVar('--text'), font:{size:11}}}}, plugins:{title:{display:true,text:T,color:cssVar('--text')}, legend:{labels:{color:cssVar('--text'),boxWidth:12}}, datalabels: dl('radar', {anchor:'end', align:'end', font:{size:9}})}})})},
+   {id:'trend', time:true, h:360, build: T => ({type:'line',
+     data:{labels: ys, datasets: sel.map(i => lineDS(i, ys.map(Y => scoreFor(state.mode, code => histAt(code, i, Y, CFG.LOCF)).index)))},
+     options: baseOpts('trend', T, {scales:{y: axis(t('score'), {suggestedMin:0, suggestedMax:100}), x: axis(t('year'))}, plugins:{title:{display:true,text:T,color:cssVar('--text')}, legend:{labels:{color:cssVar('--text'),boxWidth:12}}, datalabels: dl('trend', {align:'top'})}})})},
+   {id:'dimTrend', time:true, h:360, extra: () => `<label>${t('dimension')} <select data-opt="dim">${dimOpts()}</select></label>`, build: T => {
+     const k = +(state.opt.dimTrend_dim ?? 0); const d = M.dims[k];
+     return {type:'line', data:{labels: ys, datasets: sel.map(i => lineDS(i, ys.map(Y => { const v = d.ind.map(x => { const o = histAt(x.code, i, Y, CFG.LOCF); return o ? norm(x, o[0]) : null; }).filter(v => v != null); return v.length ? avg(v) : null; })))},
+       options: baseOpts('dimTrend', T + ': ' + dimShort(d) + ' – ' + dimName(d), {scales:{y: axis(t('score'), {min:0, max:100}), x: axis(t('year'))}, plugins:{title:{display:true,text:T + ': ' + dimShort(d) + ' – ' + dimName(d),color:cssVar('--text')}, legend:{labels:{color:cssVar('--text'),boxWidth:12}}, datalabels: dl('dimTrend', {align:'top'})}})}; }},
+   {id:'indTrend', time:true, h:360, extra: () => `<label>${t('indicator')} <select data-opt="ind" style="max-width:300px">${indOpts()}</select></label>`, build: T => {
+     const o = allInds.find(z => z.key === (state.opt.indTrend_ind ?? '0:0')) || allInds[0];
+     const ttl = indName(o.x) + ' (' + unitName(o.x) + ')';
+     return {type:'line', data:{labels: ys, datasets: sel.map(i => { const a = state.hist[o.x.code]?.[i] || []; const m = new Map(a); return lineDS(i, ys.map(Y => m.has(Y) ? m.get(Y) : null)); })},
+       options: baseOpts('indTrend', ttl, {scales:{y: axis(unitName(o.x)), x: axis(t('year'))}, plugins:{title:{display:true,text:ttl,color:cssVar('--text')}, legend:{labels:{color:cssVar('--text'),boxWidth:12}}, datalabels: dl('indTrend', {align:'top', formatter: v => fmt(v)})}})}; }},
+   {id:'stack', time:false, h: Math.max(260, 70 + sel.length * 42), build: T => ({type:'bar',
+     data:{labels: sel.map(cName), datasets: M.dims.map((d, k) => ({label: dimShort(d), data: sel.map(i => { const s = sc[i]; const v = s?.dims[k].score; return v == null || !s.nDims ? null : v / s.nDims; }), backgroundColor: d.c}))},
+     options: baseOpts('stack', T, {indexAxis:'y', scales:{x: axis(t('score'), {stacked:true, min:0, max:100}), y: axis(null, {stacked:true})}, plugins:{title:{display:true,text:T,color:cssVar('--text')}, legend:{position:'bottom', labels:{color:cssVar('--text'), boxWidth:10, font:{size:10}}}, datalabels: dl('stack', {anchor:'center', align:'center', color:'#fff', font:{size:9}}), tooltip:{callbacks:{label: c => `${dimName(M.dims[c.datasetIndex])}: +${fs(c.raw)}`}}}})})},
+   {id:'world', time:false, h:380, build: T => {
+     const all = state.rank[state.mode];
+     const ds = [{label: t('allCountries'), data: all.filter(i => !sel.includes(i)).map(i => ({x: rankOf(i), y: sc[i].index, iso:i})), backgroundColor: cssVar('--n'), pointRadius:3, _noLabel:true}];
+     sel.forEach(i => { if (sc[i]?.index != null) ds.push({label: cName(i), data: [{x: rankOf(i), y: sc[i].index}], backgroundColor: colorOf(i), pointRadius:8, pointHoverRadius:10}); });
+     return {type:'scatter', data:{datasets: ds}, options: baseOpts('world', T, {scales:{x: axis(t('rank'), {min:0, reverse:false}), y: axis(t('score'), {min:0, max:100})}, plugins:{title:{display:true,text:T,color:cssVar('--text')}, legend:{labels:{color:cssVar('--text'),boxWidth:10}}, datalabels: dl('world', {align:'top', formatter: v => fs(v.y)}), tooltip:{callbacks:{label: c => `${c.raw.iso ? cName(c.raw.iso) : c.dataset.label}: ${fs(c.raw.y)} (#${c.raw.x})`}}}})}; }},
+   {id:'polar', time:false, h:420, extra: () => `<label>${t('country')} <select data-opt="c">${cOpts()}</select></label>`, build: T => {
+     const i = sel.includes(state.opt.polar_c) ? state.opt.polar_c : sel[0]; const s = sc[i];
+     return {type:'polarArea', data:{labels: M.dims.map(dimShort), datasets:[{label: cName(i), data: s?.dims.map(d => d.score) ?? [], backgroundColor: M.dims.map(d => d.c + 'cc'), borderColor: cssVar('--card')}]},
+       options: baseOpts('polar', T + ' — ' + cName(i), {scales:{r:{min:0, max:100, ticks:{color:cssVar('--muted'), backdropColor:'transparent'}, grid:{color:cssVar('--line')}}}, plugins:{title:{display:true,text:T + ' — ' + cName(i),color:cssVar('--text')}, legend:{position:'right', labels:{color:cssVar('--text'), boxWidth:10, font:{size:10}}}, datalabels: dl('polar', {anchor:'end', align:'start', font:{size:9}})}})}; }},
+   {id:'raw', time:false, h:340, extra: () => `<label>${t('indicator')} <select data-opt="ind" style="max-width:300px">${indOpts()}</select></label>`, build: T => {
+     const o = allInds.find(z => z.key === (state.opt.raw_ind ?? '0:0')) || allInds[0];
+     const ttl = indName(o.x) + ' (' + unitName(o.x) + ')';
+     return {type:'bar', data:{labels: sel.map(i => { const r = sc[i]?.dims[o.k].inds[o.j]; return cName(i) + (r?.y ? ` (${r.y})` : ''); }), datasets:[{label: indName(o.x), data: sel.map(i => sc[i]?.dims[o.k].inds[o.j].v ?? null), backgroundColor: sel.map(colorOf), borderRadius:6}]},
+       options: baseOpts('raw', ttl, {scales:{y: axis(unitName(o.x)), x: axis()}, plugins:{title:{display:true,text:ttl,color:cssVar('--text')}, legend:{display:false}, datalabels: dl('raw', {formatter: v => fmt(v)})}})}; }}
+  ];
+}
+
+let chartRun = 0;
+async function showCharts(){
+  if (!state.selected.length){ toast(t('selectFirst')); return; }
+  const run = ++chartRun;
+  state.chartsOn = true; $('#chartSec').classList.remove('hidden');
+  const need = histMissing(state.mode, state.selected);
+  state.histPending = need;
+  renderCharts();                                   // กราฟจากข้อมูลล่าสุดแสดงทันที
+  if (!need) return;
+  await ensureHist(state.mode, state.selected, (d, n) => {
+    if (run !== chartRun) return;
+    document.querySelectorAll('.histwait b').forEach(b => b.textContent = `${d}/${n}`);
+  });
+  if (run !== chartRun || !state.chartsOn) return;
+  state.histPending = false;
+  renderCharts();                                   // เติมกราฟแนวโน้มรายปี
+}
+function histMissing(mode, isos){
+  const w = isos.filter(i => state.wbSet.has(i));
+  return MODES[mode].dims.some(d => d.ind.some(x => w.some(i => !(state.histLoaded[x.code] && state.histLoaded[x.code].has(i)) && !(state.hist[x.code] && state.hist[x.code][i]))));
+}
+function renderCharts(){
+  Object.values(state.charts).forEach(c => c.destroy()); state.charts = {};
+  if (!window.Chart){ $('#charts').innerHTML = `<div class="empty">${state.lang === 'th' ? 'โหลดไลบรารีกราฟ (Chart.js) ไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ต แล้วกดรีเฟรชหน้า' : 'Could not load the chart library (Chart.js) — check your connection and reload the page.'}</div>`; return; }
+  const specs = chartSpecs(), box = $('#charts');
+  box.innerHTML = specs.map(s => {
+    const L = state.lbl[s.id] || (state.lbl[s.id] = {mode: LBL_DEFAULT[s.id], n: s.time ? 5 : 2});
+    return `<div class="card chart-card" data-cid="${s.id}">
+      <h3>${esc(t('c_' + s.id))}</h3><p class="muted">${esc(t('c_' + s.id + '_d'))}</p>
+      <div class="cc-ctrl">${s.extra ? s.extra() : ''}
+        <label>${t('labels')} <select data-lbl>
+          <option value="none">${t('lblNone')}</option><option value="all">${t('lblAll')}</option><option value="every">${t('lblEvery')}</option>${s.time ? `<option value="latest">${t('lblLatest')}</option>` : ''}
+        </select></label>
+        <label class="nwrap" style="${L.mode === 'every' ? '' : 'display:none'}">${t('every')} <input type="number" min="1" max="50" value="${L.n}" data-n></label>
+        <button class="btn small" data-dl>⤓ ${t('dlPng')}</button>
+      </div>
+      <div class="cc-body" style="height:${s.h}px"><canvas></canvas></div></div>`;
+  }).join('');
+  specs.forEach(s => {
+    const card = box.querySelector(`[data-cid="${s.id}"]`);
+    card.querySelector('[data-lbl]').value = state.lbl[s.id].mode;
+    card.querySelectorAll('[data-opt]').forEach(el => { const key = s.id + '_' + el.dataset.opt; if (state.opt[key] != null) el.value = state.opt[key]; else state.opt[key] = el.value; });
+    card._spec = s;
+    if (s.time && state.histPending){
+      card.querySelector('.cc-body').innerHTML = `<div class="empty histwait">⏳ ${t('loadingHist')} <b></b></div>`;
+      return;
+    }
+    buildChart(s, card);
+  });
+}
+function buildChart(s, card){
+  if (state.charts[s.id]){ state.charts[s.id].destroy(); delete state.charts[s.id]; }
+  card._spec = s;
+  try {
+    const cfg = s.build(t('c_' + s.id));
+    state.charts[s.id] = new Chart(card.querySelector('canvas'), cfg);
+  } catch(e){
+    console.error('chart', s.id, e);
+    card.querySelector('.cc-body').innerHTML = `<div class="empty">${t('noSeries')}<br><small>${esc(e.message)}</small></div>`;
+  }
+}
+
+/* ============================== RENDER ALL ============================== */
+function renderAll(){ renderStatic(); renderRanking(); renderChips(); renderCompare(); if ($('#cDD').style.display === 'block') renderDD(); }
+
+/* ============================== EVENTS ============================== */
+$('#modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.dataset.mode === state.mode) return; state.mode = b.dataset.mode; state.filter = ''; $('#rankFilter').value = ''; renderAll(); if (state.chartsOn) showCharts(); });
+$('#langSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.dataset.lang === state.lang) return; state.lang = b.dataset.lang; try { localStorage.setItem('sdgpov_lang', state.lang); } catch(_){} renderAll(); if (state.chartsOn) renderCharts(); });
+$('#btnUpdate').addEventListener('click', () => loadLatest(true));
+$('#btnReset').addEventListener('click', () => {
+  chartRun++; state.selected = []; state.mode = 'sdg'; state.sortAsc = false; state.filter = ''; state.chartsOn = false; state.lbl = {}; state.opt = {};
+  Object.values(state.charts).forEach(c => c.destroy()); state.charts = {};
+  $('#charts').innerHTML = ''; $('#chartSec').classList.add('hidden');
+  $('#rankFilter').value = ''; $('#cInput').value = ''; $('#cDD').style.display = 'none';
+  renderAll(); window.scrollTo({top:0, behavior:'smooth'});
+});
+$('#rankFilter').addEventListener('input', e => { state.filter = e.target.value; renderRanking(); });
+$('#btnSort').addEventListener('click', () => { state.sortAsc = !state.sortAsc; renderStatic(); renderRanking(); });
+$('#btnRankXlsx').addEventListener('click', exportRanking);
+$('#rankTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-iso]'); if (tr) toggleCountry(tr.dataset.iso); });
+
+const cInput = $('#cInput');
+cInput.addEventListener('input', () => { ddIdx = 0; renderDD(); });
+cInput.addEventListener('focus', () => { ddIdx = 0; renderDD(); });
+cInput.addEventListener('keydown', e => {
+  const items = [...$('#cDD').querySelectorAll('[data-iso]')];
+  if (e.key === 'ArrowDown'){ ddIdx = Math.min(items.length - 1, ddIdx + 1); renderDD(); e.preventDefault(); }
+  else if (e.key === 'ArrowUp'){ ddIdx = Math.max(0, ddIdx - 1); renderDD(); e.preventDefault(); }
+  else if (e.key === 'Enter' && items[ddIdx]){ toggleCountry(items[ddIdx].dataset.iso, true); cInput.value = ''; ddIdx = 0; renderDD(); e.preventDefault(); }
+  else if (e.key === 'Escape'){ $('#cDD').style.display = 'none'; }
+});
+$('#cDD').addEventListener('mousedown', e => { const d = e.target.closest('[data-iso]'); if (!d) return; e.preventDefault(); toggleCountry(d.dataset.iso); cInput.value = ''; renderDD(); cInput.focus(); });
+document.addEventListener('click', e => { if (!e.target.closest('.picker')) $('#cDD').style.display = 'none'; });
+$('#chips').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) toggleCountry(b.dataset.rm); });
+$('#btnClear').addEventListener('click', () => { state.selected = []; onSelectionChange(); });
+$('#btnTop5').addEventListener('click', () => { state.rank[state.mode].slice(0, 5).forEach(i => { if (!state.selected.includes(i) && state.selected.length < CFG.MAX_SELECT) state.selected.push(i); }); onSelectionChange(); });
+$('#btnXlsx').addEventListener('click', exportCompare);
+$('#btnCharts').addEventListener('click', () => { if (!state.selected.length){ toast(t('selectFirst')); $('#cInput').focus(); return; } showCharts(); setTimeout(() => $('#chartSec').scrollIntoView({behavior:'smooth', block:'start'}), 50); });
+$('#btnHideCharts').addEventListener('click', () => { chartRun++; state.chartsOn = false; $('#chartSec').classList.add('hidden'); Object.values(state.charts).forEach(c => c.destroy()); state.charts = {}; });
+
+$('#charts').addEventListener('change', e => {
+  const card = e.target.closest('[data-cid]'); if (!card) return; const id = card.dataset.cid; const L = state.lbl[id];
+  if (e.target.matches('[data-lbl]')){ L.mode = e.target.value; card.querySelector('.nwrap').style.display = L.mode === 'every' ? '' : 'none'; state.charts[id]?.update(); }
+  else if (e.target.matches('[data-n]')){ L.n = e.target.value; state.charts[id]?.update(); }
+  else if (e.target.matches('[data-opt]')){ state.opt[id + '_' + e.target.dataset.opt] = e.target.value; buildChart(card._spec, card); }
+});
+$('#charts').addEventListener('input', e => { if (!e.target.matches('[data-n]')) return; const id = e.target.closest('[data-cid]').dataset.cid; state.lbl[id].n = e.target.value; state.charts[id]?.update(); });
+$('#charts').addEventListener('click', e => {
+  if (!e.target.closest('[data-dl]')) return; const id = e.target.closest('[data-cid]').dataset.cid; const ch = state.charts[id]; if (!ch) return;
+  const a = document.createElement('a'); a.href = ch.toBase64Image('image/png', 1); a.download = `${state.mode}_${id}_${today()}.png`; document.body.appendChild(a); a.click(); a.remove();
+});
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden && state.fetchedAt && Date.now() - state.fetchedAt > CFG.CACHE_TTL) loadLatest(true); });
+setInterval(() => loadLatest(true), CFG.AUTO_REFRESH);
+
+/* ============================== INIT ============================== */
+(async function init(){
+  try { const l = localStorage.getItem('sdgpov_lang'); if (l === 'en' || l === 'th') state.lang = l; } catch(e){}
+  renderStatic(); renderRanking(); renderCompare();
+  progress(0.02, t('loading'));
+  await loadCountries();
+  await loadLatest(false);
+})();
+</script>
+</body>
+</html>
